@@ -140,7 +140,10 @@ export default function Metronome() {
         src.connect(g);
         g.connect(masterGainRef.current);
 
+        // For mobile: ensure buffer is ready before starting
         src.start(time);
+        src.stop(time + 0.5); // Explicitly stop after duration
+
         scheduledSourcesRef.current.push({ src, time });
 
         const now = ctx.currentTime;
@@ -168,11 +171,18 @@ export default function Metronome() {
             const ctx = audioCtxRef.current;
             if (!ctx || !isPlayingRef.current) return;
 
+            // Use nextNoteTimeRef for accurate tracking instead of calculating from elapsed time
+            const now = ctx.currentTime;
             const secondsPerBeat = 60.0 / bpmRef.current;
-            const elapsed = ctx.currentTime - startTimeRef.current;
-            if (elapsed >= 0) {
-                const beatIndex = Math.floor(elapsed / secondsPerBeat) % subdivisionRef.current;
-                setCurrentBeatUI((beatIndex + subdivisionRef.current) % subdivisionRef.current);
+
+            // Calculate which beat should be playing based on scheduled notes
+            const timeUntilNext = nextNoteTimeRef.current - now;
+            const beatsSinceStart = beatCountRef.current;
+            const currentBeat = (beatsSinceStart - 1 + subdivisionRef.current) % subdivisionRef.current;
+
+            // Only update if we're close enough to a beat (within the beat duration)
+            if (timeUntilNext < secondsPerBeat && beatsSinceStart > 0) {
+                setCurrentBeatUI(currentBeat);
             }
 
             rafRef.current = requestAnimationFrame(rafTickRef.current);
@@ -181,7 +191,11 @@ export default function Metronome() {
 
     const startMetronome = async () => {
         const ctx = createAudioContext();
-        await ctx.resume();
+
+        // Critical for iOS: ensure context is running
+        if (ctx.state === 'suspended') {
+            await ctx.resume();
+        }
 
         beatCountRef.current = 0;
         startTimeRef.current = ctx.currentTime + 0.06;
@@ -286,7 +300,6 @@ export default function Metronome() {
                     <label className="flex items-center gap-3 text-sm text-slate-300">
                         <input type="checkbox" checked={downbeatDifferent} onChange={(e) => setDownbeatDifferent(e.target.checked)} className="h-4 w-4 rounded bg-slate-700" />
                         <span className="font-medium">Accentuate downbeat</span>
-                        {/* <span className="text-xs text-slate-500">(louder & higher pitch)</span> */}
                     </label>
                 </div>
 

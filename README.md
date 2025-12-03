@@ -23,7 +23,7 @@ npm install
 ### Development
 
 ```bash
-npm run dev
+npx vite dev
 ```
 
 Starts the development server at `http://localhost:5173`
@@ -31,7 +31,7 @@ Starts the development server at `http://localhost:5173`
 ### Build
 
 ```bash
-npm run build
+npx vite build
 ```
 
 Creates an optimized production build in the `dist/` directory.
